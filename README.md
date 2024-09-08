@@ -132,3 +132,4 @@ Have an idea or request for another script for data analysis like these?
 
 # Notes
 - Scripts may produce visual bar or pie charts, but accuracy may vary and could use fine tuning
+- If a script is not producing output, check to see if the website or service it's using is working properly, such as Otterscan or Explorer being down or not working properly for some period of time
