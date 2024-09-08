@@ -8,6 +8,8 @@ All public data, no API keys or access to private resources required, free and o
 - Block Explorers
 - Dexscreener
 
+If for some reason the scripts are not working properly, it could be because any of the services it's pulling data from is down or interacting with it changed in some way. Check the service to make sure its functioning properly in a web browser before concluding it's broken, but if there is some issue with the script feel free to [Create an Issue](https://github.com/rhmaxdotorg/downloadable-data-pulsechain/issues/new) with all the details so that (no expectations) it can be fixed.
+
 # Quick Start
 
 **Clone or download this repository**
