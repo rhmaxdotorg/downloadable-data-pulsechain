@@ -1,4 +1,4 @@
-# PulseChain Downloadable Data (testing)
+# PulseChain Downloadable Data
 Collection of tools for data analysis for tokens and wallets on PulseChain
 
 All public data, no API keys or access to private resources required, free and open source
@@ -124,6 +124,11 @@ Scripts may use this to get code for webpages as needed for data and analysis
 ## run
 
 Scripts can use this to setup python path to ensure things run smoothly across Windows, Mac and Linux
+
+# Requests
+Have an idea or request for another script for data analysis like these?
+
+[Create a Request](https://github.com/rhmaxdotorg/downloadable-data-pulsechain/issues/new) and add detailed information to Title and Description and (no expectations) and it may be considered for a new addition to the toolset.
 
 # Notes
 - Scripts may produce visual bar or pie charts, but accuracy may vary and could use fine tuning
