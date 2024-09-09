@@ -48,7 +48,7 @@ if %errorLevel% neq 0 (
 :: Install pip packages
 echo Installing required Python packages...
 python -m pip install --upgrade pip
-pip install requests tqdm beautifulsoup4 matplotlib numpy playwright
+pip install requests tqdm beautifulsoup4 matplotlib numpy playwright web3
 
 :: Install Playwright browsers
 echo Installing Playwright browsers...
