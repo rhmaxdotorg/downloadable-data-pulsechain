@@ -1,191 +1,221 @@
 #!/usr/bin/env python3
 #
-# Analyzes token holders and their common holdings, and generates a pie chart
+# Produces a text file with the token holders of a given token contract name and address
 #
-# Example usage:
-# $ ./get-common-holding.py HEX 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39
+# Script arguments: <name> <token_address>
 #
-# Outputs:
-# 1. HEX-holders.txt (if not already present)
-# 2. HEX-common-holdings.txt with descending order of common token holdings
-# 3. A pie chart of common holdings in the 'charts' directory
+# Example usage
+# $ ./get-token-holders.py HEX 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39
 #
-# Dependencies:
+# Outputs to HEX-holders.txt with descending order of holders in CSV format: address,amount
+#
+# Dependencies
 # - pip install requests tqdm beautifulsoup4 matplotlib numpy
-# - get-token-holders.py script in the same directory
+# - optional: get-html.py in the helpers directory for total holders count and progress bar
 #
 
 import sys
 import os
-import csv
 import requests
 import time
-from tqdm import tqdm
-from collections import defaultdict, Counter
 import logging
-import warnings
-import matplotlib.pyplot as plt
+from tqdm import tqdm
+from bs4 import BeautifulSoup
+import csv
 import numpy as np
+from requests.exceptions import RequestException, Timeout, ConnectionError
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
+
+import matplotlib.pyplot as plt
 
 # Import helper functions
 from helpers.run import find_python_executable, run_python_script
-
-# Suppress matplotlib font warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
-warnings.filterwarnings("ignore", message=r"Glyph \d+ \(\\N\{.*?\}\) missing from font\(s\) .*")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 SCAN_API = "https://api.scan.pulsechain.com/api/v2"
-TEMP_DIR = "temp"
-IGNORE_FILE = "ignore-tokens.txt"
+SCAN_IPFS = "https://scan.mypinata.cloud/ipfs/bafybeih3olry3is4e4lzm7rus5l3h6zrphcal5a7ayfkhzm5oivjro2cp4/#/token/"
 
-def run_get_token_holders(token_name, contract_address):
-    output_file = f"{token_name}-holders.txt"
-    if os.path.exists(output_file):
-        return output_file
+MAX_RETRIES = 5
+RETRY_DELAY = 5
+
+def run_get_html(token_address):
+    get_html_script = os.path.join('helpers', 'get-html.py')
+    if not os.path.exists(get_html_script):
+        logger.error(f"{get_html_script} not found in the helpers directory.")
+        return False
+
+    url = f"{SCAN_IPFS}{token_address}"
 
     python_exe = find_python_executable()
     if not python_exe:
-        sys.exit(1)
+        return False
 
-    if run_python_script("get-token-holders.py", token_name, contract_address):
-        return output_file
+    return run_python_script(get_html_script, url)
+
+def get_total_holders(html_file):
+    if not os.path.exists(html_file):
+        logger.error(f"{html_file} does not exist.")
+        return None
+
+    with open(html_file, 'r', encoding='utf-8') as f:
+        soup = BeautifulSoup(f.read(), 'html.parser')
+
+    holders_element = soup.find('p', class_='chakra-text', string='Holders')
+    if holders_element:
+        holders_number = holders_element.find_next('a', class_='chakra-link')
+        if holders_number:
+            return int(holders_number.text.strip().replace(',', ''))
+
+    logger.error(f"Unable to find holders number in {html_file}.")
+    return None
+
+def fetch_token_holders(token_name, token_address, output_file):
+    if not run_get_html(token_address):
+        logger.error("Failed to retrieve HTML. Exiting.")
+        return
+
+    base_url = f"{SCAN_API}/tokens/{token_address}/holders"
+    params = {}
+
+    total_holders = get_total_holders('output.html')
+    if total_holders is None:
+        logger.warning("Unable to determine total number of holders. Progress bar may be inaccurate.")
+        total_holders = float('inf')
     else:
-        logger.error("Error running get-token-holders.py")
-        sys.exit(1)
+        logger.info(f"Holders: {total_holders}\n")
 
-def get_wallet_holdings(address):
-    url = f"{SCAN_API}/addresses/{address}/tokens"
-    response = requests.get(url)
-    if response.status_code != 200:
-        logger.error(f"Error fetching holdings for {address}: {response.status_code}")
-        return []
-
-    data = response.json()
-    return [(item['token']['symbol'], item['token']['address']) for item in data.get('items', [])]
-
-def load_ignore_tokens():
-    if os.path.exists(IGNORE_FILE):
-        with open(IGNORE_FILE, 'r', encoding='utf-8') as f:
-            return set(line.strip().lower() for line in f)
-    return set()
-
-def analyze_common_holdings(token_name, holders_file):
-    os.makedirs(TEMP_DIR, exist_ok=True)
-    common_holdings = defaultdict(lambda: {'count': 0, 'address': ''})
-    ignore_tokens = load_ignore_tokens()
-
-    with open(holders_file, 'r', encoding='utf-8') as f:
-        csv_reader = csv.reader(f)
-        holders = list(csv_reader)
-
-    logger.info(f"Analyzing holdings for {len(holders)} wallets...\n")
-    for address, _ in tqdm(holders, desc="Processing wallets"):
-        cache_file = os.path.join(TEMP_DIR, f"{address}.txt")
-
-        if os.path.exists(cache_file):
-            with open(cache_file, 'r', encoding='utf-8') as f:
-                holdings = []
-                for line in f:
-                    parts = line.strip().split(',')
-                    if len(parts) >= 2:
-                        holdings.append((parts[0], parts[1]))
-        else:
-            holdings = get_wallet_holdings(address)
-            with open(cache_file, 'w', encoding='utf-8') as f:
-                for symbol, token_address in holdings:
-                    if symbol is not None and token_address is not None:
-                        try:
-                            f.write(f"{symbol},{token_address}\n")
-                        except UnicodeEncodeError:
-                            logger.warning(f"Could not write symbol {symbol} for address {address}. Skipping.")
-
-        for symbol, token_address in holdings:
-            if symbol is not None and token_address is not None:
-                if symbol.lower() != token_name.lower() and symbol.lower() not in ignore_tokens:
-                    common_holdings[symbol]['count'] += 1
-                    common_holdings[symbol]['address'] = token_address
-
-        time.sleep(0.1)  # Be nice to the API
-
-    return common_holdings
-
-def write_common_holdings(token_name, common_holdings):
-    output_file = f"{token_name}-common-holdings.txt"
-    with open(output_file, 'w', newline='', encoding='utf-8') as f:
+    with open(output_file, 'w', newline='') as f:
         csv_writer = csv.writer(f)
-        for token, data in sorted(common_holdings.items(), key=lambda x: x[1]['count'], reverse=True):
-            csv_writer.writerow([token, data['address'], data['count']])
 
-    logger.info(f"Common holdings written to {output_file}")
+        start_time = time.time()
+        holders_processed = 0
 
-def generate_pie_chart(common_holdings, token_name):
-    data_counter = Counter({token: data['count'] for token, data in common_holdings.items()})
+        pbar = tqdm(total=total_holders, unit='holders', desc=f"Gathering data")
 
-    sorted_data = data_counter.most_common()
+        all_holders = []
+        decimals = None
+
+        try:
+            while True:
+                for attempt in range(MAX_RETRIES):
+                    try:
+                        response = requests.get(base_url, params=params, timeout=30)
+                        response.raise_for_status()
+                        break
+                    except (RequestException, Timeout, ConnectionError) as e:
+                        if attempt < MAX_RETRIES - 1:
+                            logger.warning(f"Error occurred: {e}. Retrying in {RETRY_DELAY} seconds...")
+                            time.sleep(RETRY_DELAY)
+                        else:
+                            logger.error(f"Failed to fetch data after {MAX_RETRIES} attempts. Last error: {e}")
+                            return
+
+                data = response.json()
+                items = data.get('items', [])
+
+                if not items:
+                    break
+
+                for item in items:
+                    address = item['address']['hash']
+                    value = int(item['value'])
+
+                    if decimals is None:
+                        token_info = item.get('token', {})
+                        decimals = token_info.get('decimals')
+                        if decimals is not None:
+                            decimals = int(decimals)
+                        else:
+                            logger.warning("Unable to determine token decimals. Using raw values.")
+
+                    adjusted_value = value // (10 ** decimals) if decimals is not None else value
+
+                    csv_writer.writerow([address, adjusted_value])
+                    all_holders.append((address, adjusted_value))
+                    holders_processed += 1
+                    pbar.update(1)
+
+                next_page_params = data.get('next_page_params')
+                if not next_page_params:
+                    break
+
+                params = next_page_params
+                time.sleep(1)  # Be nice to the API
+
+        except KeyboardInterrupt:
+            logger.info("\nProgram terminated by user.")
+        finally:
+            pbar.close()
+
+    elapsed_time = time.time() - start_time
+    logger.info("\nDone!\n")
+    logger.info(f"Total time: {elapsed_time:.2f} seconds")
+    logger.info(f"Results written to {output_file}")
+
+    charts_dir = "charts"
+    os.makedirs(charts_dir, exist_ok=True)
+
+    create_bar_chart(token_name, all_holders, charts_dir)
+
+def create_bar_chart(token_name, all_holders, charts_dir):
+    sorted_holders = sorted(all_holders, key=lambda x: x[1], reverse=True)
+
     top_n = 50
-    if len(sorted_data) > top_n:
-        labels, values = zip(*sorted_data[:top_n])
-        other_count = sum(count for _, count in sorted_data[top_n:])
-        labels += ('Other',)
-        values += (other_count,)
-    else:
-        labels, values = zip(*sorted_data)
+    top_holders = sorted_holders[:top_n]
+    other_holders = sorted_holders[top_n:]
 
-    total = sum(values)
-    percentages = [value / total * 100 for value in values]
+    addresses = [holder[0] for holder in top_holders]
+    amounts = np.array([holder[1] for holder in top_holders])
 
-    plt.figure(figsize=(20, 15))
-    wedges, texts, autotexts = plt.pie(percentages, labels=labels, autopct='%1.1f%%', startangle=140, textprops=dict(color="w"))
+    other_amount = sum(holder[1] for holder in other_holders)
 
-    plt.setp(texts, size=8, weight="bold")
-    plt.setp(autotexts, size=8, weight="bold")
+    scale_factor = 1
+    while np.max(amounts) > 1e15 or other_amount > 1e15:
+        amounts = amounts / 10
+        other_amount = other_amount / 10
+        scale_factor *= 10
 
-    for i, (label, percentage) in enumerate(zip(labels, percentages)):
-        if percentage < 2:
-            ang = (wedges[i].theta2 - wedges[i].theta1) / 2. + wedges[i].theta1
-            y = np.sin(np.deg2rad(ang))
-            x = np.cos(np.deg2rad(ang))
-            horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
-            connectionstyle = "angle,angleA=0,angleB={}".format(ang)
-            plt.annotate(f"{label} ({percentage:.1f}%)", xy=(x, y), xytext=(1.35 * np.sign(x), 1.4 * y),
-                         horizontalalignment=horizontalalignment, arrowprops=dict(arrowstyle="-", connectionstyle=connectionstyle))
+    def format_amount(value):
+        return f"{int(value):,}"
 
-    plt.title(f'Distribution of Common Holdings for {token_name}')
-    plt.axis('equal')
+    plt.figure(figsize=(14, 9))
+    plt.bar(range(len(addresses)), amounts)
+    plt.xlabel('Address')
+    plt.ylabel(f'Amount (scaled down by {scale_factor:,}x)' if scale_factor > 1 else 'Amount')
+    plt.title(f'Top {top_n} Holders of {token_name}')
+    plt.xticks(range(len(addresses)), addresses, rotation=90)
 
-    if len(sorted_data) > top_n:
-        other_percentage = (other_count / total) * 100
-        note = f"Total percentage held by others outside top {top_n}: {other_percentage:.2f}%"
-        plt.figtext(0.5, 0.01, note, wrap=True, horizontalalignment='center', fontsize=10)
+    ax = plt.gca()
+    ax.get_yaxis().set_major_formatter(plt.FuncFormatter(lambda x, p: format_amount(x * scale_factor)))
 
-    if not os.path.exists('charts'):
-        os.makedirs('charts')
+    note = f"Total amount held by others outside top {top_n}: {format_amount(other_amount * scale_factor)}"
+    plt.figtext(0.5, 0.01, note, wrap=True, horizontalalignment='center', fontsize=10)
 
-    plt.savefig(f'charts/{token_name}_common_holdings.png', bbox_inches='tight')
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    chart_file = os.path.join(charts_dir, f"{token_name}_top_{top_n}_holders.png")
+    plt.savefig(chart_file)
     plt.close()
+    logger.info(f"Chart saved to {chart_file}")
 
-    logger.info(f"Pie chart saved to charts/{token_name}_common_holdings.png")
-
-def main():
+if __name__ == "__main__":
     if len(sys.argv) != 3:
-        logger.error(f"Usage: {sys.argv[0]} <token_name> <contract_address>")
+        logger.error(f"Usage: {sys.argv[0]} <token_name> <token_address>")
         sys.exit(1)
 
     token_name = sys.argv[1]
-    contract_address = sys.argv[2]
+    token_address = sys.argv[2]
+    output_file = f"{token_name}-holders.txt"
 
-    holders_file = run_get_token_holders(token_name, contract_address)
-    common_holdings = analyze_common_holdings(token_name, holders_file)
-    write_common_holdings(token_name, common_holdings)
-    generate_pie_chart(common_holdings, token_name)
+    logger.info(f"Fetching token holders for {token_name}...")
 
-if __name__ == "__main__":
     try:
-        main()
+        fetch_token_holders(token_name, token_address, output_file)
     except KeyboardInterrupt:
         logger.info("\nProgram terminated by user.")
     except Exception as e:
