@@ -86,7 +86,7 @@ Output Format
 
 **Example**
 ```
-get-token-liquidity.py ehex 0x57fde0a71132198BBeC939B98976993d8D89D225
+get-token-volume.py ehex 0x57fde0a71132198BBeC939B98976993d8D89D225
 ```
 
 ## get-burned-tokens
