@@ -113,6 +113,89 @@ Output Format
 get-common-holding.py icsa 0xfc4913214444aF5c715cc9F7b52655e788A569ed
 ```
 
+## liquidity-sim
+
+Returns theoretical trade impact simulation using V2 AMM (x*y=k) formula with real liquidity data from DEX SCREENER API.
+
+liquidity-sim is a community extension from author [CryptoKong145](https://cryptokong.pls.fyi/) adding theoretical trade impact simulation using the existing infrastructure for PulseChain data analysis.
+
+⚠️ **FOR EDUCATIONAL AND ENTERTAINMENT PURPOSES ONLY** ⚠️
+
+Format
+`<token_name> <token_address>`
+
+Output saved to `<token>-liquidity-sim.txt` containing pool states and price impact
+
+**Example**
+```
+liquidity-sim.py hex 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39
+```
+
+Features:
+- Shows theoretical price impact and pool states
+- Tracks USD/token reserves before/after trades
+- Historical simulation tracking
+- Real-time liquidity data from DEX Screener
+
+## hearts-law-sim
+
+Returns simulated price calculations based on Hearts Law - a price relationship between paired tokens within an AMM. This concept relates to Richard Heart's explanation of liquidity bonding, where token prices may show correlated movements based on their paired liquidity.
+
+hearts-law-sim is a community extension from author [CryptoKong145](https://cryptokong.pls.fyi/) adding the Hearts Law price relationship simulation using the existing infrastructure for PulseChain data analysis.
+
+Learn More: Richard Heart explains [Liquidity Bonding](https://x.com/superhexwin/status/1844208597024244011)
+ 
+⚠️ **FOR EDUCATIONAL AND ENTERTAINMENT PURPOSES ONLY** ⚠️
+
+Format
+`<token_name> <pair_address>`
+
+Output saved to `<token>-hearts-law.txt` containing price correlations and calculations
+
+**Example**
+```
+hearts-law-sim.py hex 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39
+```
+
+Features:
+- Calculates theoretical future prices
+- Tracks price correlations
+- Historical simulation tracking
+- Multiple pair analysis support
+
+## Important Notes for Simulation Tools (liquidity-sim & hearts-law-sim)
+
+These tools are provided for educational purposes and come with important limitations:
+
+1. Market Reality
+- If a large buy comes in as one market order, arbitrage bots would actively reduce the price impact. This would  enrich the people running bots, rather than the typical end user.
+- Real trades include fees, slippage, and MEV
+- Market sentiment affects actual prices
+- DEX Screener may not capture 100% of liquidity/pairs
+
+2. Unaccounted Factors
+- Front-running
+- Gas costs
+- Market reaction
+- Network conditions
+- MEV 
+- TWAP
+- Buy and Burns
+- Sell Volumes during buy & vice versa
+
+3. Educational Value
+Good for understanding:
+- AMM mechanics
+- Price impact
+- Liquidity effects
+- Market relationships
+
+❌ NOT for:
+- Investment advice
+- Trading decisions
+- Price predictions
+- Financial planning
+
 # Helpers
 
 ## csv2json
