@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 PulseChain Liquidity Impact Simulator
 ====================================
@@ -40,9 +42,8 @@ IMPORTANT DISCLAIMERS:
 
 Community Contribution from Author: 
 @CryptoKong145 (cryptokong.pls.fyi)
-Version: 2.0
+Version: 2.1
 """
-
 
 import sys
 import requests
@@ -155,14 +156,6 @@ def calculate_x_factor(price_change_ratio):
     else:
         return -1 / price_change_ratio
 
-def read_existing_content(filename):
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        return ""
-
-
 def print_simulation_results(result, token_symbol, amount, initial_usd, initial_tokens):
     """Print simulation results to terminal"""
     is_buy = result['action'] == 'buy'
@@ -231,16 +224,6 @@ def main():
 
             # Print results to terminal
             print_simulation_results(result, token_symbol, amount, initial_usd, initial_tokens)
-
-            # Save results to TXT file
-            filename = f"{token_symbol}-liquidity-sim.txt"
-            existing_content = read_existing_content(filename)
-
-            with open(filename, 'w', encoding='utf-8') as f:
-                # (File writing code remains the same)
-                pass
-
-            print(f"\nDetailed simulation results have been saved to {filename}")
 
         except ValueError:
             print("Invalid input. Please enter a valid number.")
