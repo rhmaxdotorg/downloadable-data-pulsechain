@@ -20,7 +20,7 @@ Usage:
     python hearts-law-sim.py <token_name> <pair_address>
 
 Example:
-    python hearts-law-sim.py hex 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39
+    python hearts-law-sim.py hex 0xf1F4ee610b2bAbB05C635F726eF8B0C568c8dc65
 
 Features:
 - Analyzes price relationships in liquidity pairs
