@@ -124,7 +124,7 @@ liquidity-sim is a community extension from author [CryptoKong145](https://crypt
 Format
 `<token_name> <token_address>`
 
-Output saved to `<token>-liquidity-sim.txt` containing pool states and price impact
+Output shown to screen containing pool states and price impact
 
 **Example**
 ```
@@ -150,11 +150,11 @@ Learn More: Richard Heart explains [Liquidity Bonding](https://x.com/superhexwin
 Format
 `<token_name> <pair_address>`
 
-Output saved to `<token>-hearts-law.txt` containing price correlations and calculations
+Output shown to screen containing price correlations and calculations
 
 **Example**
 ```
-hearts-law-sim.py hex 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39
+hearts-law-sim.py hex 0xf1F4ee610b2bAbB05C635F726eF8B0C568c8dc65
 ```
 
 Features:
@@ -182,6 +182,7 @@ These tools are provided for educational purposes and come with important limita
 - TWAP
 - Buy and Burns
 - Sell Volumes during buy & vice versa
+- Add & removal of liquidity
 
 3. Educational Value
 Good for understanding:
